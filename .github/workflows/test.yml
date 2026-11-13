@@ -1,0 +1,54 @@
+name: Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build configuration"
+        required: true
+        default: Release
+        type: choice
+        options:
+          - Release
+          - Debug
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=${{ inputs.build_type }}
+          -DMINIAUDIO_BUILD_SHARED=OFF
+          -DMINIAUDIO_BUILD_EXAMPLES=OFF
+          -DMINIAUDIO_BUILD_TESTS=OFF
+
+      - name: Build MiniAudio
+        run: cmake --build build --config ${{ inputs.build_type }} --parallel 2
+
+      - name: Upload Library
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiniAudio-${{ matrix.os }}-${{ inputs.build_type }}
+          path: |
+            build/**/*.a
+            build/**/*.lib
+          if-no-files-found: error
+          retention-days: 7
